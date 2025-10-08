@@ -81,6 +81,7 @@
         <h1>Zusagen / Absagen</h1>
         <a class="btn secondary" href="index.html">Zurück</a>
       </div>
+        <button class="btn secondary" type="button" id="setToken">GitHub speichern aktivieren</button>
       <p>Sag kurz Bescheid, ob du kommst. Such dir einen der 12 Smileys aus oder lade ein Foto hoch. Das erscheint auf der Gästewand.</p>
 
       <form class="form" id="rsvpForm">
@@ -121,7 +122,7 @@
 
       <h2 style="margin:16px 0 8px; font-size:22px;">Gästewand</h2>
       <div class="wall" id="wall"></div>
-	      <p class="muted" style="margin-top:10px;">Dein Eintrag wird gespeichert.</p>
+      <p class="muted" style="margin-top:10px;">Einträge werden öffentlich im Repo (rsvp-data.json) gespeichert, wenn GitHub aktiv ist – sonst nur lokal auf diesem Gerät.</p>
     </div>
   </div>
 
@@ -135,6 +136,17 @@
     const clearMineBtn = document.getElementById('clearMine');
 	    const DATA_URL = 'rsvp-data.json';
 	    const EMOJIS_KEY = 'rsvp_list'; // legacy key kept for fallback
+    const tokenBtn = document.getElementById('setToken');
+    function getToken(){ return localStorage.getItem('gh_token') || ''; }
+    function updateTokenButton(){ if (!tokenBtn) return; tokenBtn.textContent = getToken() ? 'GitHub-Speichern aktiv' : 'GitHub speichern aktivieren'; }
+    if (tokenBtn) tokenBtn.addEventListener('click', () => {
+      const current = getToken();
+      const t = prompt('Bitte GitHub-PAT mit repo-Rechten einfügen. Zum Deaktivieren leer lassen.', current);
+      if (t === null) return;
+      if (t.trim()) localStorage.setItem('gh_token', t.trim()); else localStorage.removeItem('gh_token');
+      updateTokenButton();
+      alert(getToken() ? 'Aktiviert. Speichern erfolgt im Repo (rsvp-data.json).' : 'Deaktiviert. Es wird lokal gespeichert.');
+    });
 		    let selectedEmoji = EMOJIS[0];
 		    let photoDataURL = '';
 	    function lsRead(){ try { return JSON.parse(localStorage.getItem(EMOJIS_KEY) || '[]') || []; } catch { return []; } }
@@ -308,6 +320,7 @@
 	    });
 
     renderEmojiGrid();
+    updateTokenButton();
     renderWall();
   </script>
 </body>
