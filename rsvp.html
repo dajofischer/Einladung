@@ -7,15 +7,15 @@
   <style>
     :root { --bg:#fff7f2; --card:#ffffff; --text:#222; --muted:#666; --accent:#ff4d6d; --ok:#10b981; --no:#ef4444; }
     html,body { height:100%; margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--text); background:var(--bg); }
-    .wrap { min-height:100%; display:grid; place-items:start center; padding:24px; }
+	    .wrap { min-height:100%; display:grid; place-items:center; padding:24px; }
     .card {
-      width:min(900px, 96vw);
+	      width:min(680px, 94vw);
       background:var(--card);
       border-radius:24px;
       box-shadow:0 10px 30px rgba(0,0,0,.08);
       padding:28px 24px;
     }
-    h1 { margin:0 0 8px; font-size:clamp(24px, 5vw, 34px); }
+	    h1 { margin:0 0 8px; font-size:clamp(24px, 5vw, 38px); }
     p { margin:0 0 14px; line-height:1.6; }
     .btn {
       display:inline-block; border:none; background:var(--accent); color:white;
@@ -121,7 +121,7 @@
 
       <h2 style="margin:16px 0 8px; font-size:22px;">Gästewand</h2>
       <div class="wall" id="wall"></div>
-      <p class="muted" style="margin-top:10px;">Dein Eintrag wird lokal gespeichert.</p>
+	      <p class="muted" style="margin-top:10px;">Dein Eintrag wird gespeichert.</p>
     </div>
   </div>
 
@@ -133,21 +133,35 @@
     const photoInput = document.getElementById('photo');
     const photoPreview = document.getElementById('photoPreview');
     const clearMineBtn = document.getElementById('clearMine');
-    const LS_KEY = 'rsvpEntriesV1';
-
-    let selectedEmoji = EMOJIS[0];
-    let photoDataURL = '';
-
-    function loadAll() {
-      try {
-        return JSON.parse(localStorage.getItem(LS_KEY) || '[]');
-      } catch { return []; }
-    }
-    function saveAll(list) {
-      try {
-        localStorage.setItem(LS_KEY, JSON.stringify(list));
-      } catch {}
-    }
+	    const API_URL = 'rsvp.php';
+	
+	    async function loadAll() {
+	      try {
+	        const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' } });
+	        if (!res.ok) throw new Error('net');
+	        return await res.json();
+	      } catch { return []; }
+	    }
+	    async function saveEntry(entry) {
+	      try {
+	        const res = await fetch(API_URL, {
+	          method: 'POST',
+	          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+	          body: JSON.stringify(entry)
+	        });
+	        return res.ok ? res.json() : [];
+	      } catch { return []; }
+	    }
+	    async function deleteEntry(name) {
+	      try {
+	        const res = await fetch(API_URL, {
+	          method: 'DELETE',
+	          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+	          body: JSON.stringify({ name })
+	        });
+	        return res.ok ? res.json() : [];
+	      } catch { return []; }
+	    }
 
     function renderEmojiGrid() {
       emojiGrid.innerHTML = '';
@@ -165,36 +179,36 @@
       });
     }
 
-    function renderWall() {
-      const list = loadAll();
-      wall.innerHTML = '';
-      list.forEach(item => {
-        const tile = document.createElement('div');
-        tile.className = 'tile';
-        const avatar = document.createElement('div');
-        avatar.className = 'avatar';
-        if (item.photo) {
-          const img = document.createElement('img');
-          img.src = item.photo;
-          img.alt = '';
-          avatar.appendChild(img);
-        } else {
-          avatar.textContent = item.emoji || "🙂";
-        }
-        const who = document.createElement('div');
-        who.className = 'who';
-        who.textContent = item.name || 'Anonym';
-
-        const stat = document.createElement('div');
-        stat.className = 'stat ' + (item.status === 'yes' ? 'ok' : 'no');
-        stat.textContent = item.status === 'yes' ? 'Kommt' : 'Kommt nicht';
-
-        tile.appendChild(avatar);
-        tile.appendChild(who);
-        tile.appendChild(stat);
-        wall.appendChild(tile);
-      });
-    }
+	    async function renderWall() {
+	      const list = await loadAll();
+	      wall.innerHTML = '';
+	      list.forEach(item => {
+	        const tile = document.createElement('div');
+	        tile.className = 'tile';
+	        const avatar = document.createElement('div');
+	        avatar.className = 'avatar';
+	        if (item.photo) {
+	          const img = document.createElement('img');
+	          img.src = item.photo;
+	          img.alt = '';
+	          avatar.appendChild(img);
+	        } else {
+	          avatar.textContent = item.emoji || "🙂";
+	        }
+	        const who = document.createElement('div');
+	        who.className = 'who';
+	        who.textContent = item.name || 'Anonym';
+	
+	        const stat = document.createElement('div');
+	        stat.className = 'stat ' + (item.status === 'yes' ? 'ok' : 'no');
+	        stat.textContent = item.status === 'yes' ? 'Kommt' : 'Kommt nicht';
+	
+	        tile.appendChild(avatar);
+	        tile.appendChild(who);
+	        tile.appendChild(stat);
+	        wall.appendChild(tile);
+	      });
+	    }
 
     async function fileToDataURL(file, maxSize = 300) {
       if (!file) return '';
@@ -235,39 +249,36 @@
       photoPreview.appendChild(img);
     });
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const data = new FormData(form);
-      const name = (data.get('name') || '').toString().trim();
-      const status = data.get('status');
-      if (!name || !status) return;
+	    form.addEventListener('submit', async (e) => {
+	      e.preventDefault();
+	      const data = new FormData(form);
+	      const name = (data.get('name') || '').toString().trim();
+	      const status = data.get('status');
+	      if (!name || !status) return;
+	
+	      await saveEntry({
+	        name,
+	        status: status === 'yes' ? 'yes' : 'no',
+	        emoji: selectedEmoji,
+	        photo: photoDataURL || ''
+	      });
+	      await renderWall();
+	      form.reset();
+	      selectedEmoji = EMOJIS[0];
+	      photoDataURL = '';
+	      renderEmojiGrid();
+	      photoPreview.innerHTML = '';
+	      photoPreview.textContent = 'Kein Bild';
+	      alert('Eintrag gespeichert!');
+	    });
 
-      const list = loadAll().filter(x => (x.name || '').toLowerCase() !== name.toLowerCase());
-      list.push({
-        name,
-        status: status === 'yes' ? 'yes' : 'no',
-        emoji: selectedEmoji,
-        photo: photoDataURL || ''
-      });
-      saveAll(list);
-      renderWall();
-      form.reset();
-      selectedEmoji = EMOJIS[0];
-      photoDataURL = '';
-      renderEmojiGrid();
-      photoPreview.innerHTML = '';
-      photoPreview.textContent = 'Kein Bild';
-      alert('Eintrag gespeichert!');
-    });
-
-    clearMineBtn.addEventListener('click', () => {
-      const name = (document.getElementById('name').value || '').trim();
-      if (!name) { alert('Bitte zuerst deinen Namen eingeben.'); return; }
-      const list = loadAll().filter(x => (x.name || '').toLowerCase() !== name.toLowerCase());
-      saveAll(list);
-      renderWall();
-      alert('Dein Eintrag wurde entfernt.');
-    });
+	    clearMineBtn.addEventListener('click', async () => {
+	      const name = (document.getElementById('name').value || '').trim();
+	      if (!name) { alert('Bitte zuerst deinen Namen eingeben.'); return; }
+	      await deleteEntry(name);
+	      await renderWall();
+	      alert('Dein Eintrag wurde entfernt.');
+	    });
 
     renderEmojiGrid();
     renderWall();
