@@ -135,33 +135,47 @@
     const clearMineBtn = document.getElementById('clearMine');
 	    const API_URL = 'rsvp.php';
 	
-	    async function loadAll() {
-	      try {
-	        const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' } });
-	        if (!res.ok) throw new Error('net');
-	        return await res.json();
-	      } catch { return []; }
-	    }
-	    async function saveEntry(entry) {
-	      try {
-	        const res = await fetch(API_URL, {
-	          method: 'POST',
-	          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-	          body: JSON.stringify(entry)
-	        });
-	        return res.ok ? res.json() : [];
-	      } catch { return []; }
-	    }
-	    async function deleteEntry(name) {
-	      try {
-	        const res = await fetch(API_URL, {
-	          method: 'DELETE',
-	          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-	          body: JSON.stringify({ name })
-	        });
-	        return res.ok ? res.json() : [];
-	      } catch { return []; }
-	    }
+		    let selectedEmoji = EMOJIS[0];
+		    let photoDataURL = '';
+		    const LS_KEY = 'rsvp_list';
+		    function lsRead(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') || []; } catch { return []; } }
+		    function lsWrite(arr){ try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch {} return arr; }
+		    async function loadAll() {
+		      try {
+		        const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' } });
+		        if (res.ok) return await res.json();
+		      } catch {}
+		      return lsRead();
+		    }
+		    async function saveEntry(entry) {
+		      try {
+		        const res = await fetch(API_URL, {
+		          method: 'POST',
+		          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+		          body: JSON.stringify(entry)
+		        });
+		        if (res.ok) return await res.json();
+		      } catch {}
+		      let list = lsRead();
+		      const lname = (entry.name || '').toLowerCase();
+		      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+		      list.push(entry);
+		      return lsWrite(list);
+		    }
+		    async function deleteEntry(name) {
+		      try {
+		        const res = await fetch(API_URL, {
+		          method: 'DELETE',
+		          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+		          body: JSON.stringify({ name })
+		        });
+		        if (res.ok) return await res.json();
+		      } catch {}
+		      let list = lsRead();
+		      const lname = (name || '').toLowerCase();
+		      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+		      return lsWrite(list);
+		    }
 
     function renderEmojiGrid() {
       emojiGrid.innerHTML = '';
