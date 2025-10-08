@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Geburtstagseinladung 🎉</title>
+  <style>
+    :root { --bg:#fff7f2; --card:#ffffff; --text:#222; --accent:#ff4d6d; }
+    html,body { height:100%; margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--text); background:var(--bg); }
+    .wrap { min-height:100%; display:grid; place-items:center; padding:24px; }
+    .card {
+      width:min(680px, 94vw);
+      background:var(--card);
+      border-radius:24px;
+      box-shadow:0 10px 30px rgba(0,0,0,.08);
+      padding:28px 24px;
+    }
+    h1 { margin:0 0 8px; font-size:clamp(24px, 5vw, 38px); }
+    p { margin:0 0 14px; line-height:1.6; }
+    .when { display:flex; gap:14px; flex-wrap:wrap; margin:12px 0 22px; }
+    .pill { background:#f1f1f1; border-radius:999px; padding:8px 14px; font-weight:600; }
+
+    /* Bühne */
+    .stage {
+      position:relative; 
+	      height:86vh; 
+      margin:12px 0 8px; 
+      border-radius:18px; 
+	      background:url('background.png') center/cover no-repeat #ffe9e9;
+	      overflow:visible;
+      display:grid;
+      place-items:end center;
+    }
+    /* Boden/Schatten */
+    .shadow {
+      width:170px; height:22px; border-radius:50%;
+      background:rgba(0,0,0,.12);
+      filter:blur(2px); 
+      transform-origin:center;
+      transition:transform .35s;
+      margin-bottom:12px;
+    }
+    /* Figur */
+    .figure {
+      position:absolute; bottom:22px;
+	      height:100%; width:auto;
+      user-select:none; cursor:pointer;
+      transform-origin:bottom center;
+      transition:filter .2s;
+    }
+    .figure:active { filter:brightness(1.05); }
+    .hint { text-align:center; font-size:14px; opacity:.75; }
+
+    /* Jump-Animation – sanftes Hüpfen mit squash & stretch */
+    @keyframes jump {
+      0%   { transform:translateY(0) scaleY(1) scaleX(1); }
+      10%  { transform:translateY(0) scaleY(.92) scaleX(1.03); }
+      45%  { transform:translateY(-120px) scaleY(1.04) scaleX(.98); }
+      60%  { transform:translateY(-80px)  scaleY(1.02) scaleX(.99); }
+      100% { transform:translateY(0) scaleY(1) scaleX(1); }
+    }
+    .jump { animation:jump .7s cubic-bezier(.25,.65,.2,1) both; }
+    /* Schatten “atmet” mit */
+    .jumping-shadow { transform:scale(1.25, .8); }
+    
+    /* Button */
+    .btn {
+      display:inline-block; border:none; background:var(--accent); color:white;
+      font-weight:700; padding:12px 18px; border-radius:12px; text-decoration:none;
+      transition:transform .06s ease, box-shadow .2s; box-shadow:0 6px 16px rgba(255,77,109,.3);
+    }
+    .btn:active { transform:translateY(1px); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>🎉 Einladung zu meinem Geburtstag!</h1>
+      <p>Ich freu mich, wenn du kommst. Tipp auf die Figur – sie hüpft vor Freude! 😄</p>
+      <div class="when">
+        <div class="pill">Sa, 23. Nov · 18:00</div>
+        <div class="pill">Bei mir zuhause</div>
+      </div>
+
+      <div class="stage" id="stage">
+        <!-- Ersetze figure.png durch dein freigestelltes Foto (PNG mit Transparenz) -->
+        <img src="figure.png" alt="Figur" class="figure" id="figure" />
+        <div class="shadow" id="shadow"></div>
+      </div>
+
+      <p class="hint">Tipp/Klick auf die Figur 👆</p>
+      <!-- Optional: Link zu RSVP-Formular -->
+      <a class="btn" href="https://forms.gle/" target="_blank" rel="noreferrer">Zusagen / Absagen</a>
+    </div>
+  </div>
+
+  <script>
+    const figure = document.getElementById('figure');
+    const shadow = document.getElementById('shadow');
+
+    function hop() {
+      if (!figure.classList.contains('jump')) {
+        figure.classList.add('jump');
+        shadow.classList.add('jumping-shadow');
+        // Am Ende der Animation Klassen wieder entfernen
+        figure.addEventListener('animationend', () => {
+          figure.classList.remove('jump');
+          shadow.classList.remove('jumping-shadow');
+        }, { once: true });
+      }
+    }
+    figure.addEventListener('click', hop);
+    figure.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') hop(); });
+    figure.tabIndex = 0; // Tastaturzugänglich
+  </script>
+</body>
+</html>
