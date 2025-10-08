@@ -135,6 +135,8 @@
     const clearMineBtn = document.getElementById('clearMine');
 	    const DATA_URL = 'rsvp-data.json';
 	    const EMOJIS_KEY = 'rsvp_list'; // legacy key kept for fallback
+		    let selectedEmoji = EMOJIS[0];
+		    let photoDataURL = '';
 	    function lsRead(){ try { return JSON.parse(localStorage.getItem(EMOJIS_KEY) || '[]') || []; } catch { return []; } }
 	    function lsWrite(arr){ try { localStorage.setItem(EMOJIS_KEY, JSON.stringify(arr)); } catch {} return arr; }
 	    function ghHeaders(){ const h={ 'Accept':'application/vnd.github+json' }; const t = localStorage.getItem('gh_token'); if (t) h.Authorization = `Bearer ${t}`; return h; }
@@ -269,28 +271,33 @@
       photoPreview.appendChild(img);
     });
 
-	    form.addEventListener('submit', async (e) => {
-	      e.preventDefault();
-	      const data = new FormData(form);
-	      const name = (data.get('name') || '').toString().trim();
-	      const status = data.get('status');
-	      if (!name || !status) return;
-	
-	      await saveEntry({
-	        name,
-	        status: status === 'yes' ? 'yes' : 'no',
-	        emoji: selectedEmoji,
-	        photo: photoDataURL || ''
-	      });
-	      await renderWall();
-	      form.reset();
-	      selectedEmoji = EMOJIS[0];
-	      photoDataURL = '';
-	      renderEmojiGrid();
-	      photoPreview.innerHTML = '';
-	      photoPreview.textContent = 'Kein Bild';
-	      alert('Eintrag gespeichert!');
-	    });
+		    form.addEventListener('submit', async (e) => {
+		      if (!form.reportValidity()) { e.preventDefault(); return; }
+		      e.preventDefault();
+		      const data = new FormData(form);
+		      const name = (data.get('name') || '').toString().trim();
+		      const status = data.get('status');
+		      if (!name || !status) { alert('Bitte Name und Status auswählen.'); return; }
+		
+		      try {
+		        await saveEntry({
+		          name,
+		          status: status === 'yes' ? 'yes' : 'no',
+		          emoji: selectedEmoji,
+		          photo: photoDataURL || ''
+		        });
+		        await renderWall();
+		        form.reset();
+		        selectedEmoji = EMOJIS[0];
+		        photoDataURL = '';
+		        renderEmojiGrid();
+		        photoPreview.innerHTML = '';
+		        photoPreview.textContent = 'Kein Bild';
+		        alert('Eintrag gespeichert!');
+		      } catch (err) {
+		        alert('Konnte nicht speichern. Der Eintrag wird lokal auf diesem Gerät gespeichert.');
+		      }
+		    });
 
 	    clearMineBtn.addEventListener('click', async () => {
 	      const name = (document.getElementById('name').value || '').trim();
