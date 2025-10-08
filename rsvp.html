@@ -175,26 +175,6 @@
 	      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
 	      return lsWrite(list);
 	    }
-	    async function loadAll() {
-	      try {
-	        const res = await fetch(DATA_URL, { cache:'no-store', headers: { 'Accept': 'application/json' } });
-	        if (res.ok) return await res.json();
-	      } catch {}
-	      return lsRead();
-	    }
-	    async function saveEntry(entry) {
-	      let list = await loadAll();
-	      const lname = (entry.name || '').toLowerCase();
-	      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
-	      list.push(entry);
-	      try { return await ghSaveList(list); } catch { return lsWrite(list); }
-	    }
-	    async function deleteEntry(name) {
-	      let list = await loadAll();
-	      const lname = (name || '').toLowerCase();
-	      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
-	      try { return await ghSaveList(list); } catch { return lsWrite(list); }
-	    }
 
     function renderEmojiGrid() {
       emojiGrid.innerHTML = '';
