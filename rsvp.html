@@ -133,49 +133,55 @@
     const photoInput = document.getElementById('photo');
     const photoPreview = document.getElementById('photoPreview');
     const clearMineBtn = document.getElementById('clearMine');
-	    const API_URL = 'rsvp.php';
-	
-		    let selectedEmoji = EMOJIS[0];
-		    let photoDataURL = '';
-		    const LS_KEY = 'rsvp_list';
-		    function lsRead(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]') || []; } catch { return []; } }
-		    function lsWrite(arr){ try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch {} return arr; }
-		    async function loadAll() {
-		      try {
-		        const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' } });
-		        if (res.ok) return await res.json();
-		      } catch {}
-		      return lsRead();
-		    }
-		    async function saveEntry(entry) {
-		      try {
-		        const res = await fetch(API_URL, {
-		          method: 'POST',
-		          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-		          body: JSON.stringify(entry)
-		        });
-		        if (res.ok) return await res.json();
-		      } catch {}
-		      let list = lsRead();
-		      const lname = (entry.name || '').toLowerCase();
-		      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
-		      list.push(entry);
-		      return lsWrite(list);
-		    }
-		    async function deleteEntry(name) {
-		      try {
-		        const res = await fetch(API_URL, {
-		          method: 'DELETE',
-		          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-		          body: JSON.stringify({ name })
-		        });
-		        if (res.ok) return await res.json();
-		      } catch {}
-		      let list = lsRead();
-		      const lname = (name || '').toLowerCase();
-		      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
-		      return lsWrite(list);
-		    }
+	    const DATA_URL = 'rsvp-data.json';
+	    const EMOJIS_KEY = 'rsvp_list'; // legacy key kept for fallback
+	    function lsRead(){ try { return JSON.parse(localStorage.getItem(EMOJIS_KEY) || '[]') || []; } catch { return []; } }
+	    function lsWrite(arr){ try { localStorage.setItem(EMOJIS_KEY, JSON.stringify(arr)); } catch {} return arr; }
+	    function ghHeaders(){ const h={ 'Accept':'application/vnd.github+json' }; const t = localStorage.getItem('gh_token'); if (t) h.Authorization = `Bearer ${t}`; return h; }
+	    function b64encode(str){ return btoa(unescape(encodeURIComponent(str))); }
+	    function guessRepo(){ const host = location.hostname; const owner = host.endsWith('.github.io') ? host.split('.github.io')[0] : ''; const parts = location.pathname.split('/').filter(Boolean); const repo = parts.length > 0 ? parts[0] : (owner ? owner + '.github.io' : ''); return { owner, repo }; }
+	    const GH_CFG = (()=>{ const {owner, repo} = guessRepo(); return { owner, repo, path: 'rsvp-data.json' }; })();
+	    async function ghGetFile() {
+	      const { owner, repo, path } = GH_CFG;
+	      if (!owner || !repo) return null;
+	      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: ghHeaders() }).catch(() => null);
+	      if (!res || !res.ok) return null;
+	      return await res.json();
+	    }
+	    async function ghSaveList(list) {
+	      const meta = await ghGetFile();
+	      const { owner, repo, path } = GH_CFG;
+	      if (!owner || !repo) throw new Error('GH repo not detected');
+	      const body = { message: 'Update RSVP data', content: b64encode(JSON.stringify(list, null, 2)) };
+	      if (meta && meta.sha) body.sha = meta.sha;
+	      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+	        method: 'PUT',
+	        headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+	        body: JSON.stringify(body)
+	      }).catch(() => null);
+	      if (!res || !res.ok) throw new Error('GH save failed');
+	      return list;
+	    }
+	    async function loadAll() {
+	      try {
+	        const res = await fetch(DATA_URL, { cache:'no-store', headers: { 'Accept': 'application/json' } });
+	        if (res.ok) return await res.json();
+	      } catch {}
+	      return lsRead();
+	    }
+	    async function saveEntry(entry) {
+	      let list = await loadAll();
+	      const lname = (entry.name || '').toLowerCase();
+	      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+	      list.push(entry);
+	      try { return await ghSaveList(list); } catch { return lsWrite(list); }
+	    }
+	    async function deleteEntry(name) {
+	      let list = await loadAll();
+	      const lname = (name || '').toLowerCase();
+	      list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+	      try { return await ghSaveList(list); } catch { return lsWrite(list); }
+	    }
 
     function renderEmojiGrid() {
       emojiGrid.innerHTML = '';
