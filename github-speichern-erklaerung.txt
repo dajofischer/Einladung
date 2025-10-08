@@ -1,0 +1,30 @@
+Kurzfassung
+- Speichern in GitHub funktioniert nur auf Geräten, auf denen ein gültiger GitHub-Personal-Access-Token (PAT) im Browser hinterlegt ist.
+- Der Token wird nur lokal im Browser (localStorage) gespeichert und NICHT mitgeschickt, wenn du den Link weitergibst.
+- Ohne Token kann jede/r die Gästewand lesen (weil rsvp-data.json öffentlich im Repo liegt), aber Einträge werden dann nur lokal auf dem jeweiligen Gerät gespeichert und NICHT ins Repo geschrieben.
+
+Muss das jede/r machen?
+- Nur die Geräte/Personen, die ins GitHub-Repo schreiben sollen, müssen einmal den Token in ihrem Browser hinterlegen (Button "GitHub speichern aktivieren").
+- Wenn du den Link verschickst, haben andere keinen Token. Sie können die bestehenden Einträge sehen, aber neue Einträge landen nur lokal auf deren Gerät, solange sie keinen Token einfügen.
+
+Wie richtet man das ein?
+1) In GitHub unter Settings → Developer settings → Personal access tokens einen Token erstellen.
+   - Empfohlen: Fine-grained PAT, Repository auswählen, Permissions: Contents → Read and Write.
+   - Ablaufdatum setzen (kurz halten) und sicher aufbewahren.
+2) Auf der Seite "GitHub speichern aktivieren" klicken und den Token einfügen.
+3) Aktiv: Neue/gelöschte Einträge werden in rsvp-data.json im Repo gespeichert. Deaktiviert: Fallback ist lokale Speicherung.
+
+Sicherheit/Empfehlungen
+- Teile deinen persönlichen Token nicht öffentlich. Nur in deinem eigenen Browser einfügen.
+- Wenn mehrere Personen schreiben sollen:
+  - Entweder jede Person hinterlegt einen eigenen Token mit Repo-Schreibrechten (nur sinnvoll für Mitwirkende).
+  - Oder du nutzt einen separaten „Machine User“/Team-Token, den du vertrauenswürdig teilst (Risiko beachten).
+  - Besser: Richte einen Server/Backend oder eine GitHub App/Action ein, die Schreibvorgänge serverseitig übernimmt (kein Token im Client nötig).
+
+Was sehen Gäste ohne Token?
+- Lesen: Ja (öffentliche rsvp-data.json).
+- Schreiben: Nur lokal auf dem eigenen Gerät; andere sehen diese lokalen Einträge nicht.
+- Um öffentlich zu speichern, muss der/die Benutzer/in einen gültigen Token einfügen.
+
+Deaktivieren
+- Über den Button den Dialog öffnen, Feld leer lassen und bestätigen. Danach wird wieder nur lokal gespeichert.
