@@ -1,0 +1,50 @@
+Kurzantwort
+- Direkt in WhatsApp einbetten geht nicht. WhatsApp zeigt Links mit Vorschau (Titel, Bild, Text) und öffnet die Seite dann im In‑App‑Browser oder im Standardbrowser.
+- Schön integrieren heißt: guten Link mit Vorschau teilen, ideal formatiertes Vorschaubild hinterlegen und einen bequemen “Per WhatsApp teilen”-Link anbieten.
+
+So gehst du vor
+
+1) App hosten und kurze URL nutzen
+- Lade die Seite auf einen Hoster (z. B. Vercel, Netlify, GitHub Pages) und nutze HTTPS.
+- Erzeuge eine kurze URL (z. B. bit.ly) – kurze Links sehen in WhatsApp besser aus.
+
+2) Hübsche Link‑Vorschau (Open Graph)
+- Lege ein Vorschaubild (og:image) an: 1200×630 px, JPG/PNG, < 300 KB, mit Titel/Emoji.
+- Setze OG‑Metadaten in der index.html (WhatsApp liest diese aus):
+  - og:title → z. B. “Paul wird 8! 🎉 Einladung”
+  - og:description → 1–2 Sätze mit Datum/Uhrzeit/Ort
+  - og:image → absolute HTTPS‑URL zum Bild (z. B. https://deinedomain.tld/preview.jpg)
+  - og:url → kanonische URL
+  - Optional: twitter:card=summary_large_image (WhatsApp nutzt meist OG, schade aber nie)
+- Nach Änderungen Cache aktualisieren: Schicke dir den Link mit einem neuen Query (…?v=2). Für die Crawler‑Aktualisierung hilft auch der Facebook Sharing Debugger: https://developers.facebook.com/tools/debug/
+
+3) WhatsApp‑Share‑Links anbieten
+- Universal (Browser): https://wa.me/?text=DEIN%20TEXT%20UND%20LINK
+  Beispiel:
+  https://wa.me/?text=🎉%20Kommst%20du%20zu%20meiner%20Party%3F%20Alle%20Infos%20und%20RSVP%20hier%3A%20https%3A%2F%2Fkurz.link%2Fpaul
+- Direkt für Apps (mobil): whatsapp://send?text=…
+- In der App kannst du einen Button “Per WhatsApp teilen” verlinken:
+  - href = 'https://wa.me/?text=' + encodeURIComponent('🎉 Einladung: https://kurz.link/paul')
+- Tipp: Pack den Link an das Satzende, damit die Vorschau stabil lädt.
+
+4) QR‑Code für Gruppen/Print
+- Erzeuge einen QR‑Code mit deiner URL (z. B. qr-code-generator.com) und teile ihn im Chat als Bild oder drucke ihn auf die Einladung. Scannen öffnet direkt die Seite.
+
+5) Inhaltliche Tipps für die Vorschau
+- Titel kurz + eindeutig: “Geburtstagsfeier Paul – 1. Nov, 14:00”
+- Beschreibung mit den Eckdaten (Ort, Zeiten, RSVP‑Hinweis).
+- Bild: farbig, klarer Text “Einladung”, 1200×630, wenig Textmenge.
+
+6) Technische Hinweise
+- HTTPS zwingend (WhatsApp bevorzugt sichere Inhalte).
+- Performance: Bildgrößen klein halten, damit In‑App‑Browser zügig lädt.
+- Falls die Vorschau nicht erscheint: Prüfe robots.txt, Content‑Type und dass die OG‑Tags im initialen HTML stehen (nicht erst per JS nachladen).
+
+7) Nice‑to‑have
+- “Zum Kalender hinzufügen”‑Link auf der Seite (ics/Google Calendar).
+- “Teilen”-Buttons für weitere Kanäle (SMS, E‑Mail).
+- Kurze, freundliche Standardnachricht vorschlagen:
+  “🎉 Einladung zur Party! Infos & Zusage hier: https://kurz.link/paul – Freu mich, wenn du dabei bist!”
+
+Fazit
+- Einbetten geht nicht, aber mit OG‑Vorschau, kurzer URL und einem WhatsApp‑Share‑Button fühlt es sich “nativ” an und sieht im Chat richtig gut aus.

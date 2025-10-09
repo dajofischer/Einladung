@@ -1,0 +1,395 @@
+Ziel
+- Plattformübergreifendes Speichern der Einladungs-Rückmeldungen mit kostenlosen/nahezu kostenlosen Serverless-Funktionen.
+- Einfache, einheitliche API, damit rsvp.html mit minimaler Anpassung überall funktioniert.
+
+Was du schon hast
+- Frontend (rsvp.html) spricht aktuell mit rsvp.php über:
+  - GET  rsvp.php            → Liste aller Einträge (JSON)
+  - POST rsvp.php            → Eintrag speichern/ersetzen
+  - DELETE rsvp.php          → Eintrag löschen (per name)
+- Das Frontend nutzt Fallback auf localStorage, wenn der Server ausfällt.
+
+Plan
+1) API-Endpunkt auf /api/rsvp vereinheitlichen (statt rsvp.php), damit du Provider einfach austauschen kannst.
+2) Eine der folgenden kostenlosen Varianten wählen und deployen:
+   A) Cloudflare Workers + KV (sehr einfach, schnell, Free-Tier großzügig)
+   B) Netlify Functions + Netlify Blob (einfach, Free-Tier)
+   C) Vercel Serverless/Edge Function + Vercel Blob (einfach, Free-Tier)
+   D) Deno Deploy + Deno KV (einfach, Free-Tier)
+
+3) Im Frontend rsvp.html den DATA_URL auf deinen neuen Endpunkt setzen (z. B. DATA_URL = '/api/rsvp').
+
+API-Vertrag (einheitlich für alle Varianten)
+- GET /api/rsvp
+  Antwort: JSON-Array
+  Beispiel: [{"name":"Max","status":"yes","emoji":"😀","photo":""}, ...]
+- POST /api/rsvp
+  Body: JSON
+  { "name":"Max", "status":"yes"|"no", "emoji":"😀", "photo": "data:image/jpeg;base64,..."|"" }
+  Wirkung: Eintrag mit gleichem Namen wird ersetzt/überschrieben
+  Antwort: Gesamte Liste (Array)
+- DELETE /api/rsvp
+  Body: JSON
+  { "name":"Max" }
+  Wirkung: Eintrag mit Name wird gelöscht
+  Antwort: Gesamte Liste (Array)
+
+Wichtige Hinweise
+- photo ist ein Data-URL-String. Beachte Provider-Limits (Blob/KV sind ok, aber halte Bilder klein; das Frontend skaliert bereits).
+- Speicherschlüssel: ein einzelner Schlüssel "list" mit dem gesamten Array ist simpel und ausreichend.
+
+Schritt 0: Frontend minimal anpassen
+- Öffne rsvp.html und ersetze die Zeile mit DATA_URL:
+  Von: const DATA_URL = 'rsvp.php';
+  Zu:   const DATA_URL = '/api/rsvp';
+- Deploye dein statisches Frontend dort, wo dein gewählter Anbieter die Funktionen bereitstellt (i. d. R. dasselbe Projekt).
+
+Variante A: Cloudflare Workers + KV (empfohlen: sehr schnell und gratis)
+1) Voraussetzungen
+   - Cloudflare Account (kostenlos)
+   - Node.js + npm
+   - Wrangler CLI: npm i -g wrangler
+
+2) Projekt anlegen
+   - In deinem Projektordner: wrangler init
+   - Fragen beantworten: "Hello World" Worker reicht.
+
+3) KV Namespace erstellen und binden
+   - KV Namespace anlegen:
+     wrangler kv:namespace create RSVPS
+   - In wrangler.toml eintragen (bind):
+     [[kv_namespaces]]
+     binding = "RSVPS"
+     id = "<ausgabe-aus-dem-befehl>"
+
+4) Worker-Code (src/worker.js)
+   Beispiel (GET/POST/DELETE, speichert alles in einem KV-Key "list"):
+   ---
+   export default {
+     async fetch(request, env) {
+       const url = new URL(request.url);
+       if (url.pathname !== "/api/rsvp") {
+         return new Response("Not found", { status: 404 });
+       }
+
+       async function readList() {
+         const txt = await env.RSVPS.get("list");
+         try { return JSON.parse(txt || "[]"); } catch { return []; }
+       }
+       async function writeList(arr) {
+         await env.RSVPS.put("list", JSON.stringify(arr));
+         return arr;
+       }
+
+       if (request.method === "GET") {
+         const list = await readList();
+         return new Response(JSON.stringify(list), { headers: { "Content-Type": "application/json; charset=utf-8" } });
+       }
+
+       let input = {};
+       try { input = await request.json(); } catch {}
+       if (request.method === "POST") {
+         const name = (input.name || "").toString().trim();
+         if (!name) return new Response("[]", { status: 400, headers: { "Content-Type":"application/json" } });
+         const status = input.status === "yes" ? "yes" : "no";
+         const emoji = (input.emoji || "🙂").toString();
+         const photo = (input.photo || "").toString();
+         const lname = name.toLowerCase();
+
+         let list = await readList();
+         list = list.filter(x => (x.name || "").toLowerCase() !== lname);
+         list.push({ name, status, emoji, photo });
+         await writeList(list);
+         return new Response(JSON.stringify(list), { headers: { "Content-Type": "application/json; charset=utf-8" } });
+       }
+
+       if (request.method === "DELETE") {
+         const name = (input.name || "").toString().trim();
+         let list = await readList();
+         if (name) {
+           const lname = name.toLowerCase();
+           list = list.filter(x => (x.name || "").toLowerCase() !== lname);
+           await writeList(list);
+         }
+         return new Response(JSON.stringify(list), { headers: { "Content-Type": "application/json; charset=utf-8" } });
+       }
+
+       return new Response("[]", { status: 405, headers: { "Content-Type":"application/json" } });
+     }
+   };
+   ---
+
+5) Lokales Testen
+   - wrangler dev
+   - GET http://127.0.0.1:8787/api/rsvp
+
+6) Deploy
+   - wrangler deploy
+   - Stelle sicher, dass dein statisches Frontend dieselbe Domain nutzt oder CORS aktivierst (bei unterschiedlicher Domain Access-Control-Allow-Origin setzen).
+
+Variante B: Netlify Functions + Netlify Blob (kostenloses Free-Tier)
+1) Voraussetzungen
+   - Netlify Account, Netlify CLI: npm i -g netlify-cli
+   - netlify init im Projekt
+   - In netlify.toml Functions-Verzeichnis definieren:
+     [functions]
+     directory = "netlify/functions"
+
+2) Netlify Blob aktivieren
+   - netlify plugins:install @netlify/blobs
+   - Die Funktion erhält dann Zugriff via @netlify/blobs.
+
+3) Funktion anlegen: netlify/functions/rsvp.js
+   ---
+   import { getStore } from '@netlify/blobs';
+
+   const BUCKET = 'rsvp-data';
+   const KEY = 'list.json';
+
+   async function readList() {
+     const store = getStore(BUCKET);
+     const txt = await store.get(KEY, { type: 'text' });
+     try { return JSON.parse(txt || '[]'); } catch { return []; }
+   }
+   async function writeList(arr) {
+     const store = getStore(BUCKET);
+     await store.set(KEY, JSON.stringify(arr));
+     return arr;
+   }
+
+   export async function handler(event) {
+     if (event.path !== '/api/rsvp') {
+       return { statusCode: 404, body: 'Not found' };
+     }
+     const headers = { 'Content-Type': 'application/json; charset=utf-8' };
+
+     if (event.httpMethod === 'GET') {
+       const list = await readList();
+       return { statusCode: 200, headers, body: JSON.stringify(list) };
+     }
+
+     let input = {};
+     try { input = JSON.parse(event.body || '{}'); } catch {}
+
+     if (event.httpMethod === 'POST') {
+       const name = (input.name || '').toString().trim();
+       if (!name) return { statusCode: 400, headers, body: '[]' };
+       const status = input.status === 'yes' ? 'yes' : 'no';
+       const emoji = (input.emoji || '🙂').toString();
+       const photo = (input.photo || '').toString();
+       const lname = name.toLowerCase();
+
+       let list = await readList();
+       list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+       list.push({ name, status, emoji, photo });
+       await writeList(list);
+       return { statusCode: 200, headers, body: JSON.stringify(list) };
+     }
+
+     if (event.httpMethod === 'DELETE') {
+       const name = (input.name || '').toString().trim();
+       let list = await readList();
+       if (name) {
+         const lname = name.toLowerCase();
+         list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+         await writeList(list);
+       }
+       return { statusCode: 200, headers, body: JSON.stringify(list) };
+     }
+
+     return { statusCode: 405, headers, body: '[]' };
+   }
+   ---
+
+4) Lokaler Start
+   - netlify dev
+   - Endpunkt: http://localhost:8888/.netlify/functions/rsvp
+   - Optional: Pretty-URL /api/rsvp via Redirect:
+     In netlify.toml ergänzen:
+     [[redirects]]
+       from = "/api/rsvp"
+       to = "/.netlify/functions/rsvp"
+       status = 200
+
+5) Deploy
+   - git push → Netlify Build
+   - Oder netlify deploy --prod
+
+Variante C: Vercel Functions + Vercel Blob (Free-Tier)
+1) Voraussetzungen
+   - Vercel CLI: npm i -g vercel
+   - Projekt mit /api Verzeichnis
+
+2) Vercel Blob aktivieren (vercel.json ggf. nicht nötig; Blob per @vercel/blob)
+   - npm i @vercel/blob
+
+3) Datei api/rsvp.js
+   ---
+   import { put, get } from '@vercel/blob';
+
+   const KEY = 'rsvp/list.json';
+
+   async function readList() {
+     try {
+       const { url } = await get(KEY);
+       const res = await fetch(url);
+       return await res.json();
+     } catch {
+       return [];
+     }
+   }
+   async function writeList(arr) {
+     await put(KEY, JSON.stringify(arr), { contentType: 'application/json', access: 'public' });
+     return arr;
+   }
+
+   export default async function handler(req, res) {
+     if (req.url !== '/api/rsvp') return res.status(404).send('Not found');
+
+     if (req.method === 'GET') {
+       const list = await readList();
+       return res.status(200).json(list);
+     }
+
+     let input = {};
+     try { input = req.body || JSON.parse(req.body || '{}'); } catch {}
+
+     if (req.method === 'POST') {
+       const name = (input.name || '').toString().trim();
+       if (!name) return res.status(400).json([]);
+       const status = input.status === 'yes' ? 'yes' : 'no';
+       const emoji = (input.emoji || '🙂').toString();
+       const photo = (input.photo || '').toString();
+       const lname = name.toLowerCase();
+
+       let list = await readList();
+       list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+       list.push({ name, status, emoji, photo });
+       await writeList(list);
+       return res.status(200).json(list);
+     }
+
+     if (req.method === 'DELETE') {
+       const name = (input.name || '').toString().trim();
+       let list = await readList();
+       if (name) {
+         const lname = name.toLowerCase();
+         list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+         await writeList(list);
+       }
+       return res.status(200).json(list);
+     }
+
+     return res.status(405).json([]);
+   }
+   ---
+
+4) Lokal testen
+   - vercel dev
+   - GET http://localhost:3000/api/rsvp
+
+5) Deploy
+   - vercel --prod
+
+Variante D: Deno Deploy + Deno KV (sehr einfach)
+1) Voraussetzungen
+   - Deno Deploy Account
+   - Deno KV aktivieren (Beta, für Deploy ok)
+
+2) main.ts
+   ---
+   const kv = await Deno.openKv();
+
+   async function readList() {
+     const r = await kv.get(['rsvp', 'list']);
+     return Array.isArray(r.value) ? r.value : [];
+   }
+   async function writeList(arr) {
+     await kv.set(['rsvp', 'list'], arr);
+     return arr;
+   }
+
+   Deno.serve(async (req) => {
+     const url = new URL(req.url);
+     if (url.pathname !== '/api/rsvp') return new Response('Not found', { status: 404 });
+
+     const headers = { 'Content-Type': 'application/json; charset=utf-8' };
+
+     if (req.method === 'GET') {
+       const list = await readList();
+       return new Response(JSON.stringify(list), { headers });
+     }
+
+     let input = {};
+     try { input = await req.json(); } catch {}
+
+     if (req.method === 'POST') {
+       const name = (input.name || '').toString().trim();
+       if (!name) return new Response('[]', { status: 400, headers });
+       const status = input.status === 'yes' ? 'yes' : 'no';
+       const emoji = (input.emoji || '🙂').toString();
+       const photo = (input.photo || '').toString();
+       const lname = name.toLowerCase();
+
+       let list = await readList();
+       list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+       list.push({ name, status, emoji, photo });
+       await writeList(list);
+       return new Response(JSON.stringify(list), { headers });
+     }
+
+     if (req.method === 'DELETE') {
+       const name = (input.name || '').toString().trim();
+       let list = await readList();
+       if (name) {
+         const lname = name.toLowerCase();
+         list = list.filter(x => (x.name || '').toLowerCase() !== lname);
+         await writeList(list);
+       }
+       return new Response(JSON.stringify(list), { headers });
+     }
+
+     return new Response('[]', { status: 405, headers });
+   });
+   ---
+
+3) Deploy
+   - In Deno Deploy ein neues Projekt anlegen und main.ts deployen.
+   - Domain kopieren, Frontend auf diese Domain (oder CORS setzen).
+
+CORS (falls Frontend und API auf verschiedenen Domains liegen)
+- Setze beim Response zusätzlich:
+  Access-Control-Allow-Origin: https://deine-frontend-domain.tld
+  Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type
+- Behandle OPTIONS-Preflight: Auf OPTIONS mit 204 und obigen Headers antworten.
+
+Tipps für Bilder
+- Das Frontend skaliert Bilder auf ~300px und JPEG-Qualität 0.85 → gut für KV/Blob.
+- Halte Data-URLs möglichst klein (< 200KB), um Latenzen und Limits zu vermeiden.
+
+Sicherheit/Schutz
+- Öffentliche Gästewand ist ok für private Einladung; für Missbrauchsschutz optional:
+  - Ein einfacher Shared-Secret-Header (z. B. X-Invite-Key) auf deiner Seite und in der Funktion prüfen.
+  - Rate Limiting (Cloudflare bietet Workers Rate Limiting/Firewall; bei anderen: einfache Zähler pro IP im KV/Blob).
+- Keine sensiblen Daten speichern.
+
+Test-Checkliste
+- Nach dem Deploy in rsvp.html DATA_URL auf /api/rsvp (oder vollständige URL) setzen.
+- GET auf /api/rsvp gibt [] zurück (frische Liste).
+- Eintrag erstellen (POST) → Liste enthält deinen Eintrag.
+- Löschen (DELETE) mit gleichem Namen → Eintrag ist weg.
+- Offline-Fall testen: Netzwerk im Browser devtools blockieren → LocalStorage greift, UI weiter benutzbar.
+- Seiten-Reload lädt wieder vom Server, wenn online.
+
+Kosten/Free-Tier-Hinweise (Stand: allgemein)
+- Cloudflare Workers + KV: sehr großzügiges Free-Tier, ideal für kleine RSVP-Seiten.
+- Netlify Functions + Blob: Free-Tier ausreichend für kleine Projekte.
+- Vercel + Blob: Free-Tier ok; Achte auf Bandbreite/Requests.
+- Deno Deploy + Deno KV: Free-Tier für Hobby gut geeignet.
+
+Minimal-Änderung am bestehenden Projekt
+- Behalte rsvp.php für lokale/Legacy-Nutzung, aber stelle in Produktion auf die neue /api/rsvp-Route um.
+- So bleibt das Projekt portabel: PHP oder Serverless, je nach Hosting.
+
+Fertig! Wähle eine Variante, ersetze DATA_URL, deployen, testen – und die Gästewand ist plattformübergreifend serverlos gespeichert.

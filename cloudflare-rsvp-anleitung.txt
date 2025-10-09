@@ -1,0 +1,194 @@
+Ziel
+- Die Seite läuft auf GitHub Pages (nur statisch). Für plattformübergreifendes Speichern der Einladungs-Rückmeldungen brauchst du einen kleinen Server-Endpoint.
+- Das geht ideal mit Cloudflare Workers + KV (Key-Value Store). Der Worker nimmt GET/POST/DELETE entgegen, speichert in KV und erlaubt CORS für deine github.io-Domain.
+
+Voraussetzungen
+- Cloudflare-Account (kostenlos)
+- Optional: Wrangler-CLI (für lokale Entwicklung/Terminal-Deploys)
+- Deine GitHub Pages URL (z. B. https://deinname.github.io/deinrepo/)
+
+Übersicht
+1) KV-Store anlegen
+2) Worker mit REST-API erstellen (GET/POST/DELETE)
+3) CORS für deine GitHub Pages Domain erlauben
+4) Worker deployen
+5) In rsvp.html die DATA_URL auf die Worker-URL stellen
+6) Testen
+
+Schritt 1: KV-Namespace anlegen
+Variante A: Cloudflare Dashboard
+- Gehe zu dashboard.cloudflare.com -> Workers & Pages -> KV
+- Create a namespace -> Name: rsvp_kv (oder ähnlich)
+- Notiere dir den Namespace-Namen. Die genaue Binding-Variable definierst du gleich im Worker.
+
+Variante B: Wrangler (optional)
+- wrangler kv:namespace create rsvp_kv
+- In der Ausgabe steht die ID. Du bindest sie im wrangler.toml.
+
+Schritt 2: Worker erstellen (Dashboard, ohne CLI)
+- Workers & Pages -> Create application -> Worker -> Quick edit
+- Füge den folgenden Code ein
+- Speichere als z. B. rsvp-worker
+- Binde den KV-Namespace als Variable RSVP_KV
+
+Code (einfügen als Worker-Skript)
+Hinweis: Passe ALLOWED_ORIGINS an deine Domain(s) an.
+
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://127.0.0.1:5500',
+  'https://deinname.github.io'
+];
+
+function cors(origin) {
+  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : '';
+  return {
+    'Access-Control-Allow-Origin': allow || 'https://deinname.github.io',
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400'
+  };
+}
+
+async function readList(env) {
+  const data = await env.RSVP_KV.get('rsvp_list', 'json');
+  return Array.isArray(data) ? data : [];
+}
+
+async function writeList(env, list) {
+  await env.RSVP_KV.put('rsvp_list', JSON.stringify(list));
+  return list;
+}
+
+function json(resBody, status = 200, origin = '') {
+  return new Response(JSON.stringify(resBody), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      ...cors(origin)
+    }
+  });
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const origin = request.headers.get('Origin') || '';
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: cors(origin) });
+    }
+
+    if (request.method === 'GET') {
+      const list = await readList(env);
+      return json(list, 200, origin);
+    }
+
+    let input = {};
+    try {
+      input = await request.json();
+    } catch (_) {
+      input = {};
+    }
+
+    if (request.method === 'POST') {
+      let { name = '', status = 'no', emoji = '🙂', photo = '' } = input || {};
+      name = String(name).trim();
+      const isYes = String(status) === 'yes';
+      status = isYes ? 'yes' : 'no';
+
+      if (!name) {
+        return json([], 400, origin);
+      }
+
+      // Optional: Foto auf ~500KB begrenzen
+      if (photo && typeof photo === 'string' && photo.length > 800000) {
+        photo = photo.slice(0, 800000);
+      }
+
+      const lname = name.toLowerCase();
+      let list = await readList(env);
+      list = list.filter(x => (String(x.name || '').toLowerCase()) !== lname);
+      list.push({ name, status, emoji, photo });
+      await writeList(env, list);
+      return json(list, 200, origin);
+    }
+
+    if (request.method === 'DELETE') {
+      const name = String(input.name || '').trim();
+      let list = await readList(env);
+      if (name) {
+        const lname = name.toLowerCase();
+        list = list.filter(x => (String(x.name || '').toLowerCase()) !== lname);
+        await writeList(env, list);
+      }
+      return json(list, 200, origin);
+    }
+
+    return new Response('[]', { status: 405, headers: cors(origin) });
+  }
+};
+
+KV-Binding im Dashboard setzen
+- In deinem Worker: Settings -> Variables -> KV Namespace Bindings -> Add binding
+- Variable name: RSVP_KV
+- Namespace: rsvp_kv (der aus Schritt 1)
+
+Route/URL
+- Du kannst den Worker ohne eigene Domain verwenden (workers.dev-Subdomain), z. B. https://rsvp-worker.deinname.workers.dev
+- Alternativ eine eigene Route (z. B. rsvp.deinedomain.tld)
+
+Schritt 3: CORS konfigurieren
+- In ALLOWED_ORIGINS die Domains deiner GitHub Pages hinzufügen:
+  - https://deinname.github.io
+  - Falls du ein Projekt-Repo hast: https://deinname.github.io/deinrepo (Origin bleibt github.io)
+- Für lokale Tests lass http://localhost:xxxx drin
+
+Schritt 4: Deployen
+- Dashboard: Save and deploy
+- Teste im Dashboard unter “Quick edit”/“Deployments” per GET/POST mit Body
+
+Schritt 5: Frontend anpassen (rsvp.html)
+- Ersetze im Skript die bisherige PHP-URL durch deinen Worker-Endpunkt
+  - Suche nach: const DATA_URL = 'rsvp.php';
+  - Setze: const DATA_URL = 'https://rsvp-worker.deinname.workers.dev';
+- PHP-Datei ist für GitHub Pages nicht nutzbar; sie darf im Repo bleiben, wird aber auf Pages ignoriert. Entscheidend ist die DATA_URL.
+
+Schritt 6: Testen
+- Öffne deine GitHub Pages URL der RSVP-Seite
+- Trage einen Testnamen ein, wähle Status/Emoji/Bild, speichere
+- Prüfe im Cloudflare Dashboard (KV Inspector) den Key rsvp_list
+- Mehrere Geräte/Betriebssysteme sehen die gleichen Daten, da aus KV geladen wird
+
+Optional: Wrangler-Setup (CLI, falls bevorzugt)
+- wrangler init rsvp-worker
+- In wrangler.toml:
+  name = "rsvp-worker"
+  compatibility_date = "2024-10-01"
+  [[kv_namespaces]]
+  binding = "RSVP_KV"
+  id = "<KV_NAMESPACE_ID>"
+- src/index.js mit obigem Code befüllen
+- wrangler deploy
+
+Sicherheit/Datenschutz
+- Daten sind öffentlich lesbar (Gästewand). Lege keine sensiblen Daten ab.
+- Löschen/Überschreiben erfolgt aktuell nur per Name. Optional kannst du:
+  - einen einfachen Admin-Token für DELETE verlangen (z. B. Header X-Admin-Token prüfen)
+  - Bildgröße begrenzen (im Code enthalten) und nur JPEGs/PNGs erlauben
+- Rate-Limiting: Bei Bedarf Cloudflare Firewall Rules/Turnstile hinzufügen
+
+Fehlerbehebung
+- CORS-Fehler: Prüfe ALLOWED_ORIGINS und Origin-Header im Browser-Netzwerkpanel
+- 405-Fehler: Methode stimmt nicht (GET/POST/DELETE verwenden)
+- 400-Fehler bei POST: name fehlt oder leer
+- Nichts erscheint auf der Wand: Browser-Konsole prüfen, DATA_URL korrekt, Worker-Logs prüfen
+
+Zusammenfassung
+- GitHub Pages bleibt statisch
+- Cloudflare Worker stellt die API bereit
+- KV speichert die Liste zentral
+- Frontend spricht nur den Worker an
+- Ergebnis: Plattformübergreifend, leichtgewichtig, kostenlos im kleinen Rahmen

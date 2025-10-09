@@ -1,0 +1,44 @@
+Warum das Speichern nur lokal funktioniert (und nicht geräteübergreifend)
+
+- GitHub Pages ist ein rein statischer Hoster.
+  - Es werden nur HTML, CSS, JS und Dateien ausgeliefert.
+  - Serverseitiger Code (PHP, rsvp.php) wird dort nicht ausgeführt.
+
+- Die App versucht in rsvp.html an eine Server-URL zu speichern:
+  - DATA_URL = "rsvp.php"
+  - Auf GitHub Pages gibt es jedoch keinen PHP-Interpreter. Der Aufruf führt zu 404/Fehler.
+  - Der JS-Code fängt den Fehler ab und nutzt als Fallback localStorage.
+
+- Warum localStorage nicht geräteübergreifend ist:
+  - localStorage speichert Daten nur im jeweiligen Browser des jeweiligen Geräts und nur für diese Domain.
+  - Es gibt keine Synchronisierung zwischen Geräten/Browsern.
+  - Im Inkognitomodus oder bei gelöschtem Cache gehen die Daten verloren.
+
+- Ergebnis:
+  - Auf GitHub Pages landet nichts auf einem Server.
+  - Einträge erscheinen nur auf dem Gerät/Browser, auf dem sie gespeichert wurden.
+
+Wie man geräteübergreifendes Speichern ermöglicht
+
+1) Eigenen (oder gemieteten) Webspace mit PHP nutzen
+   - Projekt auf einen Hoster mit PHP-Unterstützung deployen.
+   - rsvp.php funktioniert dort direkt.
+   - In rsvp.html DATA_URL auf die erreichbare URL anpassen, z. B. https://deine-domain.tld/rsvp.php
+
+2) Serverless-Funktionen verwenden
+   - Anbieter: Netlify Functions, Vercel, Cloudflare Workers, Fly.io, Deno Deploy.
+   - Eine kleine API-Funktion schreiben, die Einträge entgegennimmt und in einer Datei/DB speichert.
+   - DATA_URL in rsvp.html auf diese API-URL setzen.
+
+3) GitHub als Datenspeicher über API/Actions
+   - Eine GitHub Action oder einen kleinen Proxy einrichten, der PRs/Commits erzeugt und rsvp.json im Repo aktualisiert.
+   - Erfordert Auth (Token) und eine kleine API-Endpunkt-Schicht (z. B. Cloudflare Worker), die die Requests authentifiziert.
+
+4) Externe Datenbank/Dienst
+   - Z. B. Supabase, Firebase, Airtable, NocoDB o. ä.
+   - JS so anpassen, dass Einträge dorthin geschrieben/gelesen werden.
+
+Hinweise
+- Achte auf CORS (Access-Control-Allow-Origin), falls API auf einer anderen Domain liegt.
+- Begrenze Bildgrößen (bereits vorhanden), um Bandbreite/Quota zu schonen.
+- Wenn du weiter GitHub Pages nutzen willst, kombiniere es mit einer Serverless-API (Option 2) – das ist meist am einfachsten.
