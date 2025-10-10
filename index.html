@@ -91,20 +91,26 @@
 <body>
   <div class="wrap">
     <div class="card">
-	      <h1>🎉 Geburtstagsfeier Paul</h1>
-	      <p>Wir starten am 1. November um 14:00 in der Jump Factory. Danach geht’s zur Party in den Bodenweg 10 von 16:00 bis 18:00. Wer mag, kann anschließend noch zum Film bleiben – sonst ist das Pflichtprogramm vorbei.</p>
+	      <h2>🎉 Geburtstagsfeier Paul</h2>
+	      <p>Ich lade dich herzlich zu meiner Geburtstagsfeier ein! <br><br>
+          Wir treffen uns am 1. November um 14:00 Uhr in der Jump Factory.
+Danach geht’s zu mir nach Hause (Bodenweg 10) zum Weiterfeiern. Später schauen wir noch einen Film – wenn du Lust hast, bleib einfach dabei!
+<br><br>
+Ich freue mich auf dich!
+        </p>
       <div class="when">
-	        <div class="pill">1. Nov · 14:00</div>
-	        <div class="pill">Jump Factory → Bodenweg 10</div>
+	        <div class="pill">14:00 Jump Factory</div>
+	        <div class="pill">16:00 Party, Bodenweg 10</div>
+          <div class="pill">18:00 (optional) Kinofilm, Bodenweg 10</div>
       </div>
-
+       <p class="hint">Klick auf Paul und schau wie er sich auf dich freut 👇</p>
       <div class="stage" id="stage">
         <!-- Ersetze figure.png durch dein freigestelltes Foto (PNG mit Transparenz) -->
-        <img src="figure.png" alt="Figur" class="figure" id="figure" />
+	        <img src="stand.png" alt="Figur" class="figure" id="figure" />
         <div class="shadow" id="shadow"></div>
       </div>
 
-      <p class="hint">Tipp/Klick auf die Figur 👆</p>
+     
 	     
     </div>
   </div>
@@ -113,17 +119,24 @@
     const figure = document.getElementById('figure');
     const shadow = document.getElementById('shadow');
 
-    function hop() {
-      if (!figure.classList.contains('jump')) {
-        figure.classList.add('jump');
-        shadow.classList.add('jumping-shadow');
-        // Am Ende der Animation Klassen wieder entfernen
-        figure.addEventListener('animationend', () => {
-          figure.classList.remove('jump');
-          shadow.classList.remove('jumping-shadow');
-        }, { once: true });
-      }
-    }
+	    const frames = ['stand.png', 'unten.png', 'mitte.png', 'oben.png']; frames.forEach(src => { const img = new Image(); img.src = src; });
+	    function hop() {
+	      if (!figure.classList.contains('jump')) {
+	        const duration = 700;
+	        figure.classList.add('jump');
+	        shadow.classList.add('jumping-shadow');
+	        const t1 = setTimeout(() => { figure.src = 'unten.png'; }, Math.round(duration * 0.08));
+	        const t2 = setTimeout(() => { figure.src = 'mitte.png'; }, Math.round(duration * 0.18));
+	        const t3 = setTimeout(() => { figure.src = 'oben.png'; }, Math.round(duration * 0.45));
+	        const t4 = setTimeout(() => { figure.src = 'mitte.png'; }, Math.round(duration * 0.60));
+	        figure.addEventListener('animationend', () => {
+	          figure.classList.remove('jump');
+	          shadow.classList.remove('jumping-shadow');
+	          figure.src = 'stand.png';
+	          clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4);
+	        }, { once: true });
+	      }
+	    }
     figure.addEventListener('click', hop);
     figure.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') hop(); });
     figure.tabIndex = 0; // Tastaturzugänglich
