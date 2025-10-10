@@ -98,7 +98,9 @@
 Danach geht’s zu mir nach Hause (Bodenweg 10) zum Weiterfeiern. Später schauen wir noch einen Film – wenn du Lust hast, bleib einfach dabei!
 <br><br>
 Ich freue mich auf dich!
+<br>Dein
         </p>
+	        <br><img src="Unterschrift.png" alt="Unterschrift" style="display:block; margin-top:8px; max-width:220px; width:60%; height:auto;" />
       <div class="when">
 	        <div class="pill">14:00 Jump Factory</div>
 	        <div class="pill">16:00 Party, Bodenweg 10</div>
@@ -121,12 +123,14 @@ Ich freue mich auf dich!
     const shadow = document.getElementById('shadow');
 
 	    const frames = ['stand.png', 'unten.png', 'mitte.png', 'oben.png']; frames.forEach(src => { const img = new Image(); img.src = src; });
+	    const boing = new Audio('boing.mp3'); boing.preload = 'auto';
 	    function hop() {
 	      if (!figure.classList.contains('jump')) {
 	        const duration = 700;
 	        figure.classList.add('jump');
 	        shadow.classList.add('jumping-shadow');
 	        const t1 = setTimeout(() => { figure.src = 'unten.png'; }, Math.round(duration * 0.08));
+		        boing.currentTime = 0; boing.play().catch(()=>{});
 	        const t2 = setTimeout(() => { figure.src = 'mitte.png'; }, Math.round(duration * 0.18));
 	        const t3 = setTimeout(() => { figure.src = 'oben.png'; }, Math.round(duration * 0.45));
 	        const t4 = setTimeout(() => { figure.src = 'mitte.png'; }, Math.round(duration * 0.60));
