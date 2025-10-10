@@ -38,6 +38,7 @@
     .pill { background:#f1f1f1; border-radius:999px; padding:8px 14px; font-weight:600; }
 
     /* Bühne */
+	    img { max-width:100%; height:auto; }
     .stage {
       position:relative; 
 	      height:86vh; 
@@ -59,12 +60,13 @@
     }
     /* Figur */
     .figure {
-      position:absolute; bottom:132px;
-		      height:80%; width:auto;
-      user-select:none; cursor:pointer;
-      transform-origin:bottom center;
-      transition:filter .2s;
-    }
+	 
+	      position:absolute; bottom:clamp(24px, 12vh, 132px);
+	      max-height:60vh; max-width:90%; width:auto; height:auto;
+	      user-select:none; cursor:pointer;
+	      transform-origin:bottom center;
+	      transition:filter .2s;
+	    }
     .figure:active { filter:brightness(1.05); }
     .hint { text-align:center; font-size:14px; opacity:.75; }
 
@@ -89,6 +91,9 @@
     .btn:active { transform:translateY(1px); }
   </style>
 </head>
+	    @media (max-width: 420px) {
+	      .stage { height:70vh; }
+	    }
 <body>
   <div class="wrap">
     <div class="card">
