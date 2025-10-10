@@ -89,11 +89,12 @@
       transition:transform .06s ease, box-shadow .2s; box-shadow:0 6px 16px rgba(255,77,109,.3);
     }
     .btn:active { transform:translateY(1px); }
+    /* Responsive Design fürs iPhone */
+    @media (max-width: 420px) {
+      .stage { height:70vh; }
+    }
   </style>
 </head>
-	    @media (max-width: 420px) {
-	      .stage { height:70vh; }
-	    }
 <body>
   <div class="wrap">
     <div class="card">
