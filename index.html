@@ -4,7 +4,7 @@
   <link rel="canonical" href="https://dajofischer.github.io/Einladung/" />
   <meta property="og:url" content="https://dajofischer.github.io/Einladung/" />
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+	  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Geburtstagseinladung 🎉</title>
   <meta property="og:url" content="https://dajofischer.github.io/Einladung" />
   <meta name="description" content="Geburtstagseinladung: 1. Nov, 14:00 · Jump Factory → Danach Party im Bodenweg 10 bis 18:00." />
@@ -61,7 +61,7 @@
     /* Figur */
     .figure {
 	 
-	      position:absolute; bottom:clamp(24px, 12vh, 132px);
+		      position:absolute; bottom:calc(clamp(24px, 12vh, 132px) - 100px);
 	      max-height:60vh; max-width:90%; width:auto; height:auto;
 	      user-select:none; cursor:pointer;
 	      transform-origin:bottom center;
@@ -93,6 +93,7 @@
     @media (max-width: 420px) {
       .stage { height:70vh; }
     }
+	      .figure { max-height:52vh; bottom:calc(clamp(24px, 12vh, 132px) - 60px); }
   </style>
 </head>
 <body>
@@ -106,7 +107,7 @@ Danach geht’s zu mir nach Hause (Bodenweg 10) zum Weiterfeiern. Später schaue
 Ich freue mich auf dich!
 <br>Dein
         </p>
-	        <br><img src="Unterschrift.png" alt="Unterschrift" style="display:block; margin-top:8px; max-width:220px; width:60%; height:auto;" />
+	        <img src="Unterschrift.png" alt="Unterschrift" style="display:block; margin-top:8px; max-width:220px; width:60%; height:auto;" />
       <div class="when">
 	        <div class="pill">14:00 Jump Factory</div>
 	        <div class="pill">16:00 Party, Bodenweg 10</div>
